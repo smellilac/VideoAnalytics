@@ -1,0 +1,62 @@
+<Project>
+  <!-- Testing -->
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit.v3" Version="1.0.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.3.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.3.0" />
+  </ItemGroup>
+
+  <!-- Data Access -->
+  <ItemGroup Label="DataAccess">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
+    <PackageVersion Include="Dapper" Version="2.1.66" />
+    <PackageVersion Include="ClickHouse.Client" Version="7.3.1" />
+  </ItemGroup>
+
+  <!-- Messaging -->
+  <ItemGroup Label="Messaging">
+    <PackageVersion Include="Confluent.Kafka" Version="2.6.0" />
+  </ItemGroup>
+
+  <!-- Caching -->
+  <ItemGroup Label="Caching">
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
+  </ItemGroup>
+
+  <!-- Storage -->
+  <ItemGroup Label="Storage">
+    <PackageVersion Include="Minio" Version="6.0.4" />
+  </ItemGroup>
+
+  <!-- Application -->
+  <ItemGroup Label="Application">
+    <PackageVersion Include="Mediator.Abstractions" Version="3.1.0" />
+    <PackageVersion Include="Mediator.SourceGenerator" Version="3.1.0" />
+    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+  </ItemGroup>
+
+  <!-- Resilience -->
+  <ItemGroup Label="Resilience">
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.7.0" />
+  </ItemGroup>
+
+  <!-- Logging & Observability -->
+  <ItemGroup Label="Observability">
+    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="prometheus-net.AspNetCore" Version="9.0.0" />
+  </ItemGroup>
+
+  <!-- API Documentation -->
+  <ItemGroup Label="Api">
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.4.0" />
+  </ItemGroup>
+</Project>

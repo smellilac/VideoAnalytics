@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VideoAnalytics.Api/VideoAnalytics.Api.csproj" />
+    <Project Path="src/VideoAnalytics.Application/VideoAnalytics.Application.csproj" />
+    <Project Path="src/VideoAnalytics.Domain/VideoAnalytics.Domain.csproj" />
+    <Project Path="src/VideoAnalytics.Infrastructure/VideoAnalytics.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VideoAnalytics.Tests/VideoAnalytics.Tests.csproj" />
+  </Folder>
+</Solution>

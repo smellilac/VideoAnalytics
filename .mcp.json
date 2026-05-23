@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cwm-roslyn-navigator": {
+      "command": "cwm-roslyn-navigator",
+      "args": ["--solution", "/mnt/c/Users/User/Projects/VideoAnalytics/VideoAnalytics.slnx"]
+    }
+  }
+}

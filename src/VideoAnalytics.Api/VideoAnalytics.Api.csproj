@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\VideoAnalytics.Application\VideoAnalytics.Application.csproj" />
+    <ProjectReference Include="..\VideoAnalytics.Infrastructure\VideoAnalytics.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
