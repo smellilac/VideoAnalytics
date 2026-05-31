@@ -1,8 +1,10 @@
+using VideoAnalytics.Application.Datasets.Common;
+
 namespace VideoAnalytics.Application.Datasets.RegisterDataset;
 
+using ErrorOr;
 using Mediator;
 using Microsoft.Extensions.Logging;
-using VideoAnalytics.Application.Common;
 using VideoAnalytics.Application.Interfaces;
 using VideoAnalytics.Domain.Datasets;
 
@@ -10,15 +12,14 @@ public sealed class RegisterDatasetHandler(
     IDatasetRepository repository,
     TimeProvider timeProvider,
     ILogger<RegisterDatasetHandler> logger)
-    : ICommandHandler<RegisterDatasetCommand, RegisterDatasetResponse>
+    : ICommandHandler<RegisterDatasetCommand, ErrorOr<RegisterDatasetResponse>>
 {
-    public async ValueTask<RegisterDatasetResponse> Handle(
+    public async ValueTask<ErrorOr<RegisterDatasetResponse>> Handle(
         RegisterDatasetCommand command,
         CancellationToken cancellationToken)
     {
         if (await repository.ExistsAsync(command.Name, command.Version, cancellationToken))
-            throw new ConflictException(
-                $"Dataset '{command.Name}' version '{command.Version}' already exists.");
+            return DatasetErrors.AlreadyExists(command.Name, command.Version);
 
         var dataset = Dataset.Create(
             command.Name,

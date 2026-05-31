@@ -3,7 +3,8 @@ namespace VideoAnalytics.Api.Endpoints.DatasetLifecycle;
 using System.Text.Json;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
-using VideoAnalytics.Application.Datasets.RegisterDataset;
+using VideoAnalytics.Api.Infrastructure;
+using Application.Datasets.RegisterDataset;
 
 public sealed class RegisterDatasetEndpoint : IEndpointGroup
 {
@@ -28,8 +29,12 @@ public sealed class RegisterDatasetEndpoint : IEndpointGroup
             request.Version,
             request.PipelineRunId,
             request.Metadata);
-        var response = await mediator.Send(command, cancellationToken);
-        return TypedResults.Created($"/api/datasets/{response.DatasetId}", response);
+        
+        var result = await mediator.Send(command, cancellationToken);
+        
+        return result.MatchFirst<IResult>(
+            value => TypedResults.Created($"/api/datasets/{value.DatasetId}", value),
+            error => error.ToHttpResult());
     }
 }
 
