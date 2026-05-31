@@ -1,3 +1,5 @@
+using VideoAnalytics.Application.Datasets.Common;
+
 namespace VideoAnalytics.Application.Datasets.RegisterDataset;
 
 using ErrorOr;
