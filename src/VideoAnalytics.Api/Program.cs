@@ -31,7 +31,6 @@ try
     foreach (var type in endpointTypes)
         builder.Services.AddSingleton(typeof(IEndpointGroup), type);
 
-    builder.Services.AddExceptionHandler<ConflictExceptionHandler>();
     builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
     builder.Services.AddProblemDetails();
 
