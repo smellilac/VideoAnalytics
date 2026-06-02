@@ -1,5 +1,6 @@
 namespace VideoAnalytics.Infrastructure.Persistence;
 
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using VideoAnalytics.Application.Interfaces;
@@ -66,9 +67,33 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
             .Where(a => a.DatasetId == datasetId)
             .ToListAsync(cancellationToken);
 
-    public Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken)
+    public async Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken)
     {
-        // Implemented in CheckReadiness feature using Dapper recursive CTE
-        throw new NotImplementedException();
+        const string sql = """
+            WITH RECURSIVE dep_tree AS (
+                SELECT depends_on_dataset_id AS dependency_id
+                FROM dataset_dependencies
+                WHERE dataset_id = @datasetId
+                UNION ALL
+                SELECT dd.depends_on_dataset_id
+                FROM dataset_dependencies dd
+                INNER JOIN dep_tree dt ON dd.dataset_id = dt.dependency_id
+            )
+            SELECT d.name, d.version, d.status
+            FROM datasets d
+            INNER JOIN dep_tree dt ON d.id = dt.dependency_id
+            WHERE d.status != 'Ready'
+            LIMIT 1
+            """;
+
+        await using var conn = new NpgsqlConnection(dbContext.Database.GetConnectionString());
+        var blocking = await conn.QueryFirstOrDefaultAsync<BlockingDependency>(
+            new CommandDefinition(sql, new { datasetId }, cancellationToken: cancellationToken));
+
+        return blocking is null
+            ? ReadinessResult.Ready()
+            : ReadinessResult.NotReady($"Dependency '{blocking.Name} v{blocking.Version}' is not ready (status: {blocking.Status})");
     }
+
+    private sealed record BlockingDependency(string Name, string Version, string Status);
 }
