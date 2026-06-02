@@ -1,5 +1,6 @@
 namespace VideoAnalytics.Infrastructure.Persistence;
 
+using System.Data;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -78,22 +79,29 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
                 SELECT dd.depends_on_dataset_id
                 FROM dataset_dependencies dd
                 INNER JOIN dep_tree dt ON dd.dataset_id = dt.dependency_id
-            )
-            SELECT d.name, d.version, d.status
-            FROM datasets d
-            INNER JOIN dep_tree dt ON d.id = dt.dependency_id
-            WHERE d.status != 'Ready'
+            ) CYCLE dependency_id SET is_cycle TO true DEFAULT false USING cycle_path
+            SELECT dt.is_cycle AS "IsCycle", d.name, d.version, d.status
+            FROM dep_tree dt
+            INNER JOIN datasets d ON d.id = dt.dependency_id
+            WHERE dt.is_cycle = true OR d.status != @readyStatus
             LIMIT 1
             """;
 
-        await using var conn = new NpgsqlConnection(dbContext.Database.GetConnectionString());
-        var blocking = await conn.QueryFirstOrDefaultAsync<BlockingDependency>(
-            new CommandDefinition(sql, new { datasetId }, cancellationToken: cancellationToken));
+        var conn = dbContext.Database.GetDbConnection();
+        if (conn.State == ConnectionState.Closed)
+            await conn.OpenAsync(cancellationToken);
 
-        return blocking is null
-            ? ReadinessResult.Ready()
-            : ReadinessResult.NotReady($"Dependency '{blocking.Name} v{blocking.Version}' is not ready (status: {blocking.Status})");
+        var blocking = await conn.QueryFirstOrDefaultAsync<BlockingDependency>(
+            new CommandDefinition(sql, new { datasetId, readyStatus = DatasetStatus.Ready.ToString() }, cancellationToken: cancellationToken));
+
+        if (blocking is null)
+            return ReadinessResult.Ready();
+
+        if (blocking.IsCycle)
+            return ReadinessResult.NotReady("Circular dependency detected in dependency graph.");
+
+        return ReadinessResult.NotReady($"Dependency '{blocking.Name} v{blocking.Version}' is not ready (status: {blocking.Status})");
     }
 
-    private sealed record BlockingDependency(string Name, string Version, string Status);
+    private sealed record BlockingDependency(bool IsCycle, string? Name, string? Version, string? Status);
 }

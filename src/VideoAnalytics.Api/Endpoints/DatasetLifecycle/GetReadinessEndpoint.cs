@@ -13,6 +13,7 @@ public sealed class GetReadinessEndpoint : IEndpointGroup
            .WithTags("Datasets")
            .Produces<CheckReadinessResponse>(StatusCodes.Status200OK)
            .Produces(StatusCodes.Status404NotFound)
+           .Produces(StatusCodes.Status422UnprocessableEntity)
            .WithOpenApi();
     }
 
