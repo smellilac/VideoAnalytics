@@ -25,7 +25,10 @@ public sealed class AddDependencyHandler(
             return DatasetErrors.DependencyTargetNotFound(command.DependsOnDatasetId);
 
         if (await repository.DependencyExistsAsync(command.DatasetId, command.DependsOnDatasetId, cancellationToken))
-            return DatasetErrors.DependencyAlreadyExists(command.DatasetId, command.DependsOnDatasetId);
+            return new Success();
+
+        if (await repository.WouldCreateCycleAsync(command.DatasetId, command.DependsOnDatasetId, cancellationToken))
+            return DatasetErrors.CircularDependency(command.DatasetId, command.DependsOnDatasetId);
 
         var dependency = new DatasetDependency(command.DatasetId, command.DependsOnDatasetId);
         await repository.AddDependencyAsync(dependency, cancellationToken);

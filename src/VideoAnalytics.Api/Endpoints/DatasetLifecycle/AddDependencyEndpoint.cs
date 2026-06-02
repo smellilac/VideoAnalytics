@@ -15,6 +15,7 @@ public sealed class AddDependencyEndpoint : IEndpointGroup
            .Produces(StatusCodes.Status204NoContent)
            .Produces(StatusCodes.Status404NotFound)
            .Produces(StatusCodes.Status409Conflict)
+           .Produces(StatusCodes.Status422UnprocessableEntity)
            .ProducesValidationProblem()
            .WithOpenApi();
     }

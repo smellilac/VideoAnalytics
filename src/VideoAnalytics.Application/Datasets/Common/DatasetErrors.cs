@@ -49,4 +49,9 @@ public static class DatasetErrors
         Error.Conflict(
             code: "Dataset.DependencyAlreadyExists",
             description: $"Dataset {datasetId} already depends on dataset {dependsOnDatasetId}.");
+
+    public static Error CircularDependency(Guid datasetId, Guid dependsOnDatasetId) =>
+        Error.Validation(
+            code: "Dataset.CircularDependency",
+            description: $"Adding dependency from {datasetId} to {dependsOnDatasetId} would create a circular reference.");
 }

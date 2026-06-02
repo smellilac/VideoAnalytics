@@ -108,10 +108,45 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
             d => d.DatasetId == datasetId && d.DependsOnDatasetId == dependsOnDatasetId,
             cancellationToken);
 
+    public async Task<bool> WouldCreateCycleAsync(Guid datasetId, Guid dependsOnDatasetId, CancellationToken cancellationToken)
+    {
+        // Walk all transitive dependencies starting from dependsOnDatasetId.
+        // If we reach datasetId, adding this edge would create a cycle.
+        const string sql = """
+            WITH RECURSIVE reachable AS (
+                SELECT depends_on_dataset_id AS node_id
+                FROM dataset_dependencies
+                WHERE dataset_id = @dependsOnDatasetId
+                UNION ALL
+                SELECT dd.depends_on_dataset_id
+                FROM dataset_dependencies dd
+                INNER JOIN reachable r ON dd.dataset_id = r.node_id
+            ) CYCLE node_id SET is_cycle TO true DEFAULT false USING cycle_path
+            SELECT EXISTS (
+                SELECT 1 FROM reachable WHERE node_id = @datasetId AND is_cycle = false
+            )
+            """;
+
+        var conn = dbContext.Database.GetDbConnection();
+        if (conn.State == ConnectionState.Closed)
+            await conn.OpenAsync(cancellationToken);
+
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(sql, new { datasetId, dependsOnDatasetId }, cancellationToken: cancellationToken));
+    }
+
     public async Task AddDependencyAsync(DatasetDependency dependency, CancellationToken cancellationToken)
     {
         dbContext.DatasetDependencies.Add(dependency);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // Concurrent request added the same (DatasetId, DependsOnDatasetId) — already exists, treat as success
+            dbContext.ChangeTracker.Clear();
+        }
     }
 
     private sealed record BlockingDependency(bool IsCycle, string? Name, string? Version, string? Status);
