@@ -19,11 +19,10 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")));
 
         services.AddScoped<IDatasetRepository, DatasetRepository>();
-        
-        // TODO Check scoped dependencies (maybe would appear later)
         services.AddScoped<IEventPublisher, NullEventPublisher>();
         services.AddSingleton<ICacheService, NullCacheService>();
         services.AddSingleton<IArtifactStorage, NullArtifactStorage>();
+        services.AddHostedService<OutboxPublisher>();
 
         return services;
     }

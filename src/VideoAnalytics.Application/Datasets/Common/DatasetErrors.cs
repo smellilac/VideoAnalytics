@@ -25,8 +25,8 @@ public static class DatasetErrors
             code: "Dataset.DependenciesNotReady",
             description: $"Cannot transition to Ready: {reason}");
 
-    public static Error ArtifactMissing(string s3Key) =>
+    public static Error ArtifactMissing(IReadOnlyList<string> s3Keys) =>
         Error.Validation(
             code: "Dataset.ArtifactMissing",
-            description: $"Artifact '{s3Key}' not found in S3.");
+            description: $"Artifacts not found in S3: {string.Join(", ", s3Keys.Select(k => $"'{k}'"))}");
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using VideoAnalytics.Application.Interfaces;
 using VideoAnalytics.Domain.Datasets;
+using VideoAnalytics.Domain.Outbox;
 
 public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetRepository
 {
@@ -32,6 +33,19 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         dbContext.Datasets.Update(dataset);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task SaveTransitionAsync(Dataset dataset, DatasetStatusHistory history, OutboxMessage outboxMessage, CancellationToken cancellationToken)
+    {
+        dbContext.Datasets.Update(dataset);
+        await dbContext.DatasetStatusHistory.AddAsync(history, cancellationToken);
+        await dbContext.OutboxMessages.AddAsync(outboxMessage, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DatasetArtifact>> GetArtifactsAsync(Guid datasetId, CancellationToken cancellationToken) =>
+        await dbContext.DatasetArtifacts
+            .Where(a => a.DatasetId == datasetId)
+            .ToListAsync(cancellationToken);
 
     public Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken)
     {

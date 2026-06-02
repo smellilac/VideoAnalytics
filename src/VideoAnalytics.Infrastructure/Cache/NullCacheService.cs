@@ -3,6 +3,7 @@ namespace VideoAnalytics.Infrastructure.Cache;
 using VideoAnalytics.Application.Interfaces;
 
 // Null-object stub — replaced with StackExchange.Redis when Redis is wired up
+// Инвалидирует все ключи кэша связанные с конкретным датасетом. // Текущая реализация: report:summary:{datasetId} // Ключи без dataset_id (report:engagement:*, report:trends:*) // не инвалидируются — они протухают по TTL. 
 internal sealed class NullCacheService : ICacheService
 {
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken) =>
