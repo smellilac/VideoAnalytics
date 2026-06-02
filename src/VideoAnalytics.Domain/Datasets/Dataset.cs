@@ -39,7 +39,7 @@ public sealed class Dataset
         };
     }
 
-    public void TransitionTo(DatasetStatus newStatus, TimeProvider timeProvider, string? message = null)
+    public void TransitionTo(DatasetStatus newStatus, DateTimeOffset now, string? message = null)
     {
         if (!DatasetStatusTransitions.IsAllowed(Status, newStatus))
             throw new InvalidOperationException($"Transition from {Status} to {newStatus} is not allowed.");
@@ -51,9 +51,9 @@ public sealed class Dataset
             ErrorMessage = null;
 
         if (newStatus == DatasetStatus.Ready)
-            CompletedAt = timeProvider.GetUtcNow();
+            CompletedAt = now;
 
         Status = newStatus;
-        UpdatedAt = timeProvider.GetUtcNow();
+        UpdatedAt = now;
     }
 }
