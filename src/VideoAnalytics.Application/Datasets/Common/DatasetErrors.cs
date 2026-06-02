@@ -29,4 +29,9 @@ public static class DatasetErrors
         Error.Validation(
             code: "Dataset.ArtifactMissing",
             description: $"Artifacts not found in S3: {string.Join(", ", s3Keys.Select(k => $"'{k}'"))}");
+
+    public static Error InvalidStatus(Guid id, DatasetStatus current, DatasetStatus expected) =>
+        Error.Validation(
+            code: "Dataset.InvalidStatus",
+            description: $"Dataset {id} is in {current} status; expected {expected}.");
 }

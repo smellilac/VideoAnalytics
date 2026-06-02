@@ -42,6 +42,25 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<DatasetArtifact> AddArtifactAsync(DatasetArtifact artifact, CancellationToken cancellationToken)
+    {
+        dbContext.DatasetArtifacts.Add(artifact);
+        
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return artifact;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // ON CONFLICT (DatasetId, S3Key) DO NOTHING — return the already-registered artifact
+            dbContext.ChangeTracker.Clear();
+            return await dbContext.DatasetArtifacts
+                .AsNoTracking()
+                .SingleAsync(a => a.DatasetId == artifact.DatasetId && a.S3Key == artifact.S3Key, cancellationToken);
+        }
+    }
+
     public async Task<IReadOnlyList<DatasetArtifact>> GetArtifactsAsync(Guid datasetId, CancellationToken cancellationToken) =>
         await dbContext.DatasetArtifacts
             .Where(a => a.DatasetId == datasetId)
