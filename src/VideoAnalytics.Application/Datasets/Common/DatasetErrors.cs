@@ -39,4 +39,14 @@ public static class DatasetErrors
         Error.Validation(
             code: "Dataset.InvalidStatus",
             description: $"Dataset {id} has invalid status {current} for this operation.");
+
+    public static Error DependencyTargetNotFound(Guid dependsOnDatasetId) =>
+        Error.NotFound(
+            code: "Dataset.DependencyTargetNotFound",
+            description: $"Dependency target dataset with ID {dependsOnDatasetId} was not found.");
+
+    public static Error DependencyAlreadyExists(Guid datasetId, Guid dependsOnDatasetId) =>
+        Error.Conflict(
+            code: "Dataset.DependencyAlreadyExists",
+            description: $"Dataset {datasetId} already depends on dataset {dependsOnDatasetId}.");
 }

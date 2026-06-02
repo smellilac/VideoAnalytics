@@ -103,5 +103,16 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         return ReadinessResult.NotReady($"Dependency '{blocking.Name} v{blocking.Version}' is not ready (status: {blocking.Status})");
     }
 
+    public async Task<bool> DependencyExistsAsync(Guid datasetId, Guid dependsOnDatasetId, CancellationToken cancellationToken) =>
+        await dbContext.DatasetDependencies.AnyAsync(
+            d => d.DatasetId == datasetId && d.DependsOnDatasetId == dependsOnDatasetId,
+            cancellationToken);
+
+    public async Task AddDependencyAsync(DatasetDependency dependency, CancellationToken cancellationToken)
+    {
+        dbContext.DatasetDependencies.Add(dependency);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private sealed record BlockingDependency(bool IsCycle, string? Name, string? Version, string? Status);
 }
