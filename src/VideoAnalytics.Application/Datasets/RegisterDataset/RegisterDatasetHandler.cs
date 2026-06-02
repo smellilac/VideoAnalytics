@@ -28,7 +28,15 @@ public sealed class RegisterDatasetHandler(
             command.Metadata,
             timeProvider);
 
-        await repository.AddAsync(dataset, cancellationToken);
+        try
+        {
+            await repository.AddAsync(dataset, cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            // Defensive layer: concurrent request registered the same (Name, Version) between ExistsAsync and AddAsync
+            return DatasetErrors.AlreadyExists(command.Name, command.Version);
+        }
 
         logger.LogInformation(
             "Dataset {DatasetId} registered with name {Name} version {Version}",
