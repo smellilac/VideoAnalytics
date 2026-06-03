@@ -149,5 +149,24 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         }
     }
 
+    public async Task<(IReadOnlyList<Dataset> Items, int Total)> ListAsync(
+        DatasetStatus? status, int skip, int take, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Datasets.AsNoTracking();
+
+        if (status is not null)
+            query = query.Where(d => d.Status == status);
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
     private sealed record BlockingDependency(bool IsCycle, string? Name, string? Version, string? Status);
 }
