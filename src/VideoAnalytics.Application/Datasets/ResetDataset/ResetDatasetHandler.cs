@@ -41,12 +41,8 @@ public sealed class ResetDatasetHandler(
             DatasetStatus.Pending,
             now);
 
-        var outboxPayload = JsonSerializer.Serialize(new
-        {
-            DatasetId = dataset.Id,
-            FromStatus = fromStatus.ToString(),
-            ToStatus = DatasetStatus.Pending.ToString()
-        });
+        var outboxPayload = JsonSerializer.Serialize(
+            new StatusChangedPayload(dataset.Id, fromStatus.ToString(), DatasetStatus.Pending.ToString()));
         var outboxMessage = OutboxMessage.Create(OutboxMessageTypes.DatasetStatusChanged, outboxPayload, now);
 
         await repository.SaveTransitionAsync(dataset, history, outboxMessage, cancellationToken);
