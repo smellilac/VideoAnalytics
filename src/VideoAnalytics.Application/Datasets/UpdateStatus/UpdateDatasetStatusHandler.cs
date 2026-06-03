@@ -59,6 +59,7 @@ public sealed class UpdateDatasetStatusHandler(
             FromStatus = fromStatus.ToString(),
             ToStatus = command.NewStatus.ToString()
         });
+        
         var outboxMessage = OutboxMessage.Create(OutboxMessageTypes.DatasetStatusChanged, outboxPayload, now);
 
         await repository.SaveTransitionAsync(dataset, history, outboxMessage, cancellationToken);
