@@ -53,12 +53,9 @@ public sealed class UpdateDatasetStatusHandler(
             now,
             command.Message);
 
-        var outboxPayload = JsonSerializer.Serialize(new
-        {
-            DatasetId = dataset.Id,
-            FromStatus = fromStatus.ToString(),
-            ToStatus = command.NewStatus.ToString()
-        });
+        var outboxPayload = JsonSerializer.Serialize(
+            new StatusChangedPayload(dataset.Id, fromStatus.ToString(), command.NewStatus.ToString()));
+        
         var outboxMessage = OutboxMessage.Create(OutboxMessageTypes.DatasetStatusChanged, outboxPayload, now);
 
         await repository.SaveTransitionAsync(dataset, history, outboxMessage, cancellationToken);

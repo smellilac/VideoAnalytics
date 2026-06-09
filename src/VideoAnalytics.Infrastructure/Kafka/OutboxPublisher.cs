@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using VideoAnalytics.Application.Datasets.Common;
 using VideoAnalytics.Application.Interfaces;
 using VideoAnalytics.Domain.Outbox;
 using VideoAnalytics.Infrastructure.Persistence;
@@ -102,6 +103,4 @@ internal sealed class OutboxPublisher(
         }
     }
 
-    private sealed record StatusChangedPayload(Guid DatasetId, string FromStatus, string ToStatus);
-    private sealed record DatasetReadyPayload(Guid DatasetId);
 }
