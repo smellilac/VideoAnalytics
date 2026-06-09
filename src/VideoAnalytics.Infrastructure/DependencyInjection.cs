@@ -1,5 +1,6 @@
 namespace VideoAnalytics.Infrastructure;
 
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,20 @@ public static class DependencyInjection
         services.AddSingleton<ICacheService, NullCacheService>();
         services.AddSingleton<IArtifactStorage, NullArtifactStorage>();
         services.AddHostedService<OutboxPublisher>();
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>(name: "postgresql", tags: ["ready"])
+            .AddRedis(
+                configuration.GetConnectionString("Redis") ?? "localhost:6379",
+                name: "redis",
+                tags: ["ready"])
+            .AddKafka(
+                new ProducerConfig
+                {
+                    BootstrapServers = configuration["Kafka:BootstrapServers"] ?? "localhost:9092"
+                },
+                name: "kafka",
+                tags: ["ready"]);
 
         return services;
     }

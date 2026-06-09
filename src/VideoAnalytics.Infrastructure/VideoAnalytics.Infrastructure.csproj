@@ -14,5 +14,8 @@
     </PackageReference>
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="AspNetCore.HealthChecks.Kafka" />
   </ItemGroup>
 </Project>

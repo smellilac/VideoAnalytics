@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 using Serilog;
 using VideoAnalytics.Api;
@@ -42,6 +43,17 @@ try
 
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready"),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    });
 
     app.MapEndpoints();
 
