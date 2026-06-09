@@ -34,4 +34,9 @@ public static class DatasetErrors
         Error.Validation(
             code: "Dataset.InvalidStatus",
             description: $"Dataset {id} is in {current} status; expected {expected}.");
+
+    public static Error InvalidStatus(Guid id, DatasetStatus current) =>
+        Error.Validation(
+            code: "Dataset.InvalidStatus",
+            description: $"Dataset {id} has invalid status {current} for this operation.");
 }
