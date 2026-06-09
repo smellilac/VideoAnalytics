@@ -1,5 +1,3 @@
-using VideoAnalytics.Application.Datasets.Common;
-
 namespace VideoAnalytics.Application.Datasets.RegisterDataset;
 
 using ErrorOr;
@@ -7,6 +5,7 @@ using Mediator;
 using Microsoft.Extensions.Logging;
 using VideoAnalytics.Application.Interfaces;
 using VideoAnalytics.Domain.Datasets;
+using VideoAnalytics.Application.Datasets.Common;
 
 public sealed class RegisterDatasetHandler(
     IDatasetRepository repository,
@@ -27,7 +26,7 @@ public sealed class RegisterDatasetHandler(
             command.PipelineRunId,
             command.Metadata,
             timeProvider);
-
+        
         try
         {
             await repository.AddAsync(dataset, cancellationToken);

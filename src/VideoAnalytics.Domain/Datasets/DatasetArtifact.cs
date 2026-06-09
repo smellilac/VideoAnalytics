@@ -12,4 +12,21 @@ public sealed class DatasetArtifact
     public long SizeBytes { get; private set; }
     public long RowCount { get; private set; }
     public DateTimeOffset RegisteredAt { get; private set; }
+
+    public static DatasetArtifact Create(
+        Guid datasetId,
+        string s3Key,
+        string artifactType,
+        long sizeBytes,
+        long rowCount,
+        DateTimeOffset registeredAt) => new()
+    {
+        Id = Guid.CreateVersion7(registeredAt),
+        DatasetId = datasetId,
+        S3Key = s3Key,
+        ArtifactType = artifactType,
+        SizeBytes = sizeBytes,
+        RowCount = rowCount,
+        RegisteredAt = registeredAt
+    };
 }

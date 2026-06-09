@@ -24,7 +24,15 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
 
         builder.Property(m => m.ProcessedAt);
 
+        builder.Property(m => m.Error);
+
+        builder.Property(m => m.RetryCount)
+            .HasDefaultValue(0)
+            .IsRequired();
+
         builder.HasIndex(m => m.ProcessedAt)
             .HasFilter("processed_at IS NULL");
+
+        builder.HasIndex(m => m.CreatedAt);
     }
 }

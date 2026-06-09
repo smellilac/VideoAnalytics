@@ -10,6 +10,8 @@ public sealed class OutboxMessage
     public string Payload { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? ProcessedAt { get; private set; }
+    public string? Error { get; private set; }
+    public int RetryCount { get; private set; }
 
     public static OutboxMessage Create(string type, string payload, DateTimeOffset createdAt) =>
         new()
@@ -21,4 +23,11 @@ public sealed class OutboxMessage
         };
 
     public void MarkProcessed(DateTimeOffset processedAt) => ProcessedAt = processedAt;
+
+    public void MarkFailed(DateTimeOffset now, string error)
+    {
+        // TODO Check do I need Interlocked to increment here
+        RetryCount++;
+        Error = error;
+    }
 }

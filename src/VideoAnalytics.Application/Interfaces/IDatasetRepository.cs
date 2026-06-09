@@ -10,6 +10,7 @@ public interface IDatasetRepository
     Task<Dataset?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task UpdateAsync(Dataset dataset, CancellationToken cancellationToken);
     Task SaveTransitionAsync(Dataset dataset, DatasetStatusHistory history, OutboxMessage outboxMessage, CancellationToken cancellationToken);
+    Task<DatasetArtifact> AddArtifactAsync(DatasetArtifact artifact, CancellationToken cancellationToken);
     Task<IReadOnlyList<DatasetArtifact>> GetArtifactsAsync(Guid datasetId, CancellationToken cancellationToken);
     Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken);
 }
