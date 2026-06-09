@@ -17,5 +17,6 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" />
     <PackageReference Include="AspNetCore.HealthChecks.Kafka" />
+    <PackageReference Include="Polly" />
   </ItemGroup>
 </Project>
