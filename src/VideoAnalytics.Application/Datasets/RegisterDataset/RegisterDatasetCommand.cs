@@ -10,6 +10,7 @@ public sealed record RegisterDatasetCommand(
     string PipelineRunId,
     JsonDocument? Metadata) : ICommand<ErrorOr<RegisterDatasetResponse>>;
 
+
 public sealed record RegisterDatasetResponse(
     Guid DatasetId,
     string Name,
