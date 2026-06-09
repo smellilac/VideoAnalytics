@@ -13,4 +13,7 @@ public interface IDatasetRepository
     Task<DatasetArtifact> AddArtifactAsync(DatasetArtifact artifact, CancellationToken cancellationToken);
     Task<IReadOnlyList<DatasetArtifact>> GetArtifactsAsync(Guid datasetId, CancellationToken cancellationToken);
     Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken);
+    Task<bool> DependencyExistsAsync(Guid datasetId, Guid dependsOnDatasetId, CancellationToken cancellationToken);
+    Task<bool> WouldCreateCycleAsync(Guid datasetId, Guid dependsOnDatasetId, CancellationToken cancellationToken);
+    Task AddDependencyAsync(DatasetDependency dependency, CancellationToken cancellationToken);
 }
