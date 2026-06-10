@@ -19,5 +19,8 @@
     <PackageReference Include="AspNetCore.HealthChecks.Kafka" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Minio" />
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
   </ItemGroup>
 </Project>
