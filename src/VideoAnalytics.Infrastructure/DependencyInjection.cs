@@ -20,9 +20,16 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")));
 
         services.AddScoped<IDatasetRepository, DatasetRepository>();
-        services.AddScoped<IEventPublisher, NullEventPublisher>();
+
+        // Kafka
+        services.AddOptions<KafkaSettings>()
+            .BindConfiguration("Kafka")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        
+        services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
+        
         services.AddSingleton<ICacheService, NullCacheService>();
-        services.AddSingleton<IArtifactStorage, NullArtifactStorage>();
         services.AddHostedService<OutboxPublisher>();
 
         services.AddHealthChecks()
