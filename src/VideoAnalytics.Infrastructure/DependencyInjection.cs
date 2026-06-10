@@ -49,7 +49,18 @@ public static class DependencyInjection
         });
         services.AddSingleton<IArtifactStorage, MinioArtifactStorage>();
 
-        services.AddSingleton<ICacheService, NullCacheService>();
+        // Redis — IConnectionMultiplexer is Singleton (expensive to create, thread-safe by design)
+        services.AddOptions<RedisSettings>()
+            .BindConfiguration("Redis")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            var s = sp.GetRequiredService<IOptions<RedisSettings>>().Value;
+            return ConnectionMultiplexer.Connect(s.ConnectionString);
+        });
+        services.AddSingleton<ICacheService, RedisCacheService>();
+
         services.AddHostedService<OutboxPublisher>();
 
         services.AddHealthChecks()
