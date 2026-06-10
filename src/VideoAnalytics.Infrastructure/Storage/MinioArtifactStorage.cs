@@ -1,3 +1,6 @@
+using Polly;
+using Polly.CircuitBreaker;
+
 namespace VideoAnalytics.Infrastructure.Storage;
 
 using Microsoft.Extensions.Logging;
@@ -5,8 +8,6 @@ using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
-using Polly;
-using Polly.CircuitBreaker;
 using VideoAnalytics.Application.Interfaces;
 
 internal sealed class MinioArtifactStorage : IArtifactStorage, IAsyncDisposable
@@ -96,7 +97,7 @@ internal sealed class MinioArtifactStorage : IArtifactStorage, IAsyncDisposable
                         args.BreakDuration.TotalSeconds);
                     return ValueTask.CompletedTask;
                 },
-                OnHalfOpen = _ =>
+                OnHalfOpened = _ =>
                 {
                     logger.LogInformation("MinIO circuit breaker half-open — testing storage connectivity");
                     return ValueTask.CompletedTask;
