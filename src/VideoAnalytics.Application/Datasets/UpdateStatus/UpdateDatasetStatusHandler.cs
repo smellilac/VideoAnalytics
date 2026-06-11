@@ -26,6 +26,12 @@ public sealed class UpdateDatasetStatusHandler(
         if (dataset is null)
             return DatasetErrors.NotFound(command.DatasetId);
 
+        // Idempotency for Kafka redelivery — see design doc section 3.2.
+        // Not the same as the FSM rule "Ready has no outgoing transitions" (DatasetStatusTransitions) —
+        // this is "the command was already applied in a previous delivery".
+        if (dataset.Status == command.NewStatus)
+            return new Success();
+
         var fromStatus = dataset.Status;
 
         if (command.NewStatus == DatasetStatus.Ready)
@@ -46,6 +52,8 @@ public sealed class UpdateDatasetStatusHandler(
             return Error.Validation("Dataset.InvalidTransition", ex.Message);
         }
 
+        dataset.MergeMetadata(command.Metadata); 
+        
         var history = DatasetStatusHistory.Create(
             dataset.Id,
             fromStatus,
@@ -68,9 +76,8 @@ public sealed class UpdateDatasetStatusHandler(
         {
             await eventPublisher.PublishDatasetReadyAsync(dataset.Id, cancellationToken);
 
-            // Инвалидирует report:summary:{dataset_id} который мог закэшироваться
-            // в предыдущем прогоне этого датасета (после reset и повторного Ready).
-            // report:engagement:* и report:trends:* инвалидируются по TTL.
+            // Invalidate report:summary:{dataset_id} which could be cached
+            // report:engagement:* and report:trends:* invalidates by TTL.
             await cacheService.InvalidateAsync(dataset.Id, cancellationToken);
         }
 
