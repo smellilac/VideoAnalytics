@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace VideoAnalytics.Domain.Datasets;
 
 using System.Text.Json;
@@ -55,5 +57,24 @@ public sealed class Dataset
 
         Status = newStatus;
         UpdatedAt = now;
+    }
+    
+    public void MergeMetadata(JsonDocument? incoming)
+    {
+        if (incoming is null)
+            return;
+
+        JsonObject merged = Metadata is { RootElement.ValueKind: JsonValueKind.Object }
+            ? JsonNode.Parse(Metadata.RootElement.GetRawText())!.AsObject()
+            : new JsonObject();
+
+        var incomingNode = JsonNode.Parse(incoming.RootElement.GetRawText())!.AsObject();
+        foreach (var (key, value) in incomingNode)
+            merged[key] = value?.DeepClone();
+
+        var newMetadata = JsonDocument.Parse(merged.ToJsonString());
+
+        Metadata?.Dispose();   
+        Metadata = newMetadata;
     }
 }
