@@ -23,6 +23,15 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    
+    // Explicit despite being the .NET 8+ default — a faulted BackgroundService (e.g. PipelineEventConsumer
+    // on a fatal Kafka client error) must bring down the whole host so Kubernetes restarts the pod.
+    // Do NOT change to Ignore: a silently-dead Kafka consumer with a healthy HTTP API
+    // is a worse failure mode than a visible crash loop.
+    builder.Services.Configure<HostOptions>(options =>
+    {
+        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
+    });
 
     var endpointTypes = Assembly.GetExecutingAssembly()
         .GetTypes()

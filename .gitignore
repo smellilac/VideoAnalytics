@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 settings.local.json
 Claude.md
 CLAUDE.md
+
+FIXES.md
+PipelineEventConsumer_spec.md
