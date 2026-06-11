@@ -56,7 +56,7 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
         {
             // ON CONFLICT (DatasetId, S3Key) DO NOTHING — return the already-registered artifact
-            dbContext.ChangeTracker.Clear();
+            dbContext.Entry(artifact).State = EntityState.Detached;
             return await dbContext.DatasetArtifacts
                 .AsNoTracking()
                 .SingleAsync(a => a.DatasetId == artifact.DatasetId && a.S3Key == artifact.S3Key, cancellationToken);
@@ -145,7 +145,7 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
         {
             // Concurrent request added the same (DatasetId, DependsOnDatasetId) — already exists, treat as success
-            dbContext.ChangeTracker.Clear();
+            dbContext.Entry(dependency).State = EntityState.Detached;
         }
     }
 
