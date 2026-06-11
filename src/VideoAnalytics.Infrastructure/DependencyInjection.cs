@@ -1,3 +1,5 @@
+using FluentValidation;
+
 namespace VideoAnalytics.Infrastructure;
 
 using Confluent.Kafka;
@@ -25,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IDatasetRepository, DatasetRepository>();
 
         // Kafka
+        services.AddSingleton<IValidator<KafkaSettings>, KafkaSettingsValidator>();
+        services.AddSingleton<IValidateOptions<KafkaSettings>, FluentValidateOptions<KafkaSettings>>();
+
         services.AddOptions<KafkaSettings>()
             .BindConfiguration("Kafka")
             .ValidateDataAnnotations()
@@ -62,6 +67,7 @@ public static class DependencyInjection
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddHostedService<OutboxPublisher>();
+        services.AddHostedService<PipelineEventConsumer>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(name: "postgresql", tags: ["ready"])
