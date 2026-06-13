@@ -17,4 +17,5 @@ public interface IDatasetRepository
     Task<bool> WouldCreateCycleAsync(Guid datasetId, Guid dependsOnDatasetId, CancellationToken cancellationToken);
     Task AddDependencyAsync(DatasetDependency dependency, CancellationToken cancellationToken);
     Task<(IReadOnlyList<Dataset> Items, int Total)> ListAsync(DatasetStatus? status, int skip, int take, CancellationToken cancellationToken);
+    Task<IReadOnlyList<DatasetReadinessIssue>> CheckRangeReadinessAsync(string relevantName, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken);
 }

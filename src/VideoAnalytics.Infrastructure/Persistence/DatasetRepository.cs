@@ -149,6 +149,52 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
         }
     }
 
+    public async Task<IReadOnlyList<DatasetReadinessIssue>> CheckRangeReadinessAsync(
+        string relevantName, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            WITH expected_dates AS (
+                SELECT generate_series(@dateFrom::date, @dateTo::date, '1 day'::interval)::date AS expected_date
+            )
+            SELECT
+                ed.expected_date AS version,
+                d.status,
+                d.error_message
+            FROM expected_dates ed
+            LEFT JOIN datasets d
+                ON d.name = @relevantName
+               AND d.version = to_char(ed.expected_date, 'YYYY-MM-DD')
+            WHERE d.status IS NULL OR d.status != @readyStatus
+            ORDER BY ed.expected_date
+            """;
+
+        var conn = dbContext.Database.GetDbConnection();
+        if (conn.State == ConnectionState.Closed)
+            await conn.OpenAsync(cancellationToken);
+
+        var rows = await conn.QueryAsync<NotReadyRow>(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    relevantName,
+                    dateFrom = dateFrom.ToString("yyyy-MM-dd"),
+                    dateTo = dateTo.ToString("yyyy-MM-dd"),
+                    readyStatus = DatasetStatus.Ready.ToString()
+                },
+                cancellationToken: cancellationToken));
+
+        return rows
+            .Select(r => new DatasetReadinessIssue(
+                Date: r.Version,
+                Reason: r.Status is null
+                    ? "Dataset not found"
+                    : r.Status == DatasetStatus.Failed.ToString()
+                        ? $"Dataset is Failed: {r.ErrorMessage}"
+                        : $"Dataset is {r.Status}"))
+            .ToList();
+    }
+
     public async Task<(IReadOnlyList<Dataset> Items, int Total)> ListAsync(
         DatasetStatus? status, int skip, int take, CancellationToken cancellationToken)
     {
@@ -169,4 +215,6 @@ public sealed class DatasetRepository(AppDbContext dbContext) : IDatasetReposito
     }
 
     private sealed record BlockingDependency(bool IsCycle, string? Name, string? Version, string? Status);
+
+    private sealed record NotReadyRow(string Version, string Status, string? ErrorMessage);
 }
