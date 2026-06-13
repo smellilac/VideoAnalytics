@@ -32,6 +32,7 @@ src/
       DatasetDependency.cs
       DatasetStatusTransitions.cs     # Таблица допустимых переходов — ТОЛЬКО здесь
       ReadinessResult.cs
+	  DatasetReadinessIssue.cs
     Common/
       IDomainEvent.cs
 
@@ -115,8 +116,6 @@ src/
         PlatformComparisonEndpoint.cs
         CategoryDistributionEndpoint.cs
         DatasetSummaryEndpoint.cs
-    Filters/
-      DatasetReadinessGuard.cs        # Endpoint filter: блокирует Reporting если датасет не READY
     Infrastructure/
       ValidationExceptionHandler.cs   # FluentValidation → 400 (только uncaught exceptions)
       ErrorOrExtensions.cs            # Error.ToHttpResult() — маппинг ErrorType → ProblemDetails
@@ -221,6 +220,35 @@ public sealed record DatasetDependency(Guid DatasetId, Guid DependsOnDatasetId);
 
 Составной PK: `(DatasetId, DependsOnDatasetId)`.
 
+## ClickHouse Schema
+
+### video_engagement_metrics
+
+```sql
+CREATE TABLE video_engagement_metrics
+(
+    dataset_id      UUID,                    -- lineage: Dataset.Id (PostgreSQL) прогона который записал строку.
+                                              -- Не выбирается ни одним reporting-запросом — только для ops/debug.
+    video_id        String,
+    platform        LowCardinality(String),  -- 'tiktok', 'instagram', etc.
+    recorded_at     DateTime,
+    views           UInt64,
+    likes           UInt64,
+    comments        UInt64,
+    shares          UInt64,
+    engagement_rate Float64,
+    category        LowCardinality(String),
+    tags            Array(String)
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(recorded_at)
+ORDER BY (platform, recorded_at, video_id);
+```
+
+`platform` и `category` здесь — атрибуты конкретного видео в ClickHouse, не связаны с полями `Platform`/`Category`, удалёнными из `Dataset` (PostgreSQL, см. Anti-patterns). Совпадение имён случайно — не реагировать как на нарушение anti-pattern.
+
+
+
 ## Application Interfaces
 
 ### IDatasetRepository
@@ -233,6 +261,7 @@ public interface IDatasetRepository
     Task<Dataset?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task UpdateAsync(Dataset dataset, CancellationToken cancellationToken);
     Task<ReadinessResult> CheckReadinessAsync(Guid datasetId, CancellationToken cancellationToken);
+	Task<IReadOnlyList<DatasetReadinessIssue>> CheckRangeReadinessAsync(string relevantName, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken);
 }
 ```
 
@@ -279,9 +308,48 @@ READY   → (терминальный, переходов нет)
 
 Если хотя бы одно условие не выполнено — переход отклоняется с `422`.
 
-### Readiness Guard
+### Readiness guard
 
-**Каждый** Reporting endpoint перед запросом к ClickHouse вызывает `CheckReadinessHandler`. Если `IsReady == false` → `503 Service Unavailable` с описанием причины. Клиент никогда не получает частичные данные молча.
+Reporting API гарантирует клиенту точное соответствие запрошенному периоду: для запроса `(platform, date_from, date_to)` каждый календарный день в диапазоне должен иметь соответствующий `Dataset` в статусе `Ready`. Если хотя бы один день не `Ready` (любой статус кроме `Ready`, включая полное отсутствие записи) — guard возвращает `503` с явным указанием каждого проблемного дня. Сервис никогда не отдаёт частичные данные молча: урезанный временной ряд из-за "данные сейчас обновляются" и урезанный ряд из-за "данных за этот день и не было" — для клиента визуально неотличимы, но требуют разной реакции и не должны путаться.
+
+Предпосылка: "один день — один `Dataset`". `Version` для датасетов, читаемых Reporting API, — дата в ISO-формате (`'2024-01-14'`), что допускает `BETWEEN` как сравнение строк.
+
+Resolve + bulk-check выполняется одним set-based SQL-запросом, не циклом по дням:
+
+```sql
+SELECT version, status, error_message
+FROM datasets
+WHERE name = @relevantName
+  AND version BETWEEN @date_from AND @date_to
+  AND status != 'Ready'
+```
+
+Пустой результат → запрос пропускается в ClickHouse. Непустой → `503`, `issues` формируется из вернувшихся строк (одна строка = один проблемный день).
+
+`@relevantName` — параметр, своё значение для каждого "содержательного" reporting-эндпоинта:
+
+| Endpoint | relevantName |
+| --- | --- |
+| GetEngagementReport | engagement_metrics |
+| GetDailyTrends | hashtag_trends |
+| GetPlatformComparison | TBD — сверить с реальным графом зависимостей |
+| GetCategoryDistribution | TBD — сверить с реальным графом зависимостей |
+| GetDatasetSummary | guard в этой форме не нужен — использует существующий CheckReadinessQuery(datasetId) |
+
+Формат `503`-ответа:
+
+```json
+{
+  "status": 503,
+  "title": "Data not ready for requested period",
+  "issues": [
+    { "date": "2024-01-14", "reason": "Dataset is Failed: <error_message>" },
+    { "date": "2024-01-15", "reason": "Dataset is InProgress" }
+  ]
+}
+```
+
+`WHERE status != 'Ready'` корректен сам по себе только при выполнении инварианта: если upstream-датасет ушёл из `Ready` (ретроактивный `/reset`), все downstream-датасеты немедленно перестают быть `Ready` тоже — см. "DatasetReadinessGuard — каскадный reset" ниже. До реализации каскада guard может пропустить случай "downstream формально `Ready`, но один из его upstream сейчас пересчитывается".
 
 ### Idempotency артефактов
 
@@ -291,6 +359,18 @@ READY   → (терминальный, переходов нет)
 - `ErrorMessage` очищается при сбросе (обрабатывается внутри `Dataset.TransitionTo()`)
 - Артефакты не удаляются — Spark детерминирован и перезапишет те же S3-ключи при повторном прогоне
 - История переходов не теряется — пишется в `dataset_status_history`
+
+### Reset — каскадный эффект на downstream-граф
+
+`/reset` датасета каскадно переводит весь downstream-граф (транзитивное замыкание, не только прямые зависимости) тоже в `Pending` — не только сам датасет. Без этого `WHERE status != 'Ready'` в readiness guard может пропустить случай, когда формально `Ready` датасет ссылается на данные, чей upstream сейчас пересчитывается после ретроактивного `/reset`.
+
+Это применимо и когда сбрасываемый датасет сам был `Ready` — то есть для downstream-графа `/reset` выполняет переход `Ready → Pending`, которого нет в таблице FSM выше. Механизм для этого перехода пока не выбран:
+- либо добавить `Ready → Pending` в `_allowed` напрямую — меняет общую FSM-семантику для всех путей, включая обычный `UpdateDatasetStatusCommand` от Kafka-consumer;
+- либо отдельный привилегированный `Dataset.ForceResetFromReady()`, минующий `DatasetStatusTransitions.IsAllowed` — `/reset` явная ops-операция со своей семантикой, не должна расширять граф переходов которым пользуется Kafka-поток.
+
+Сохранение каскада — одной транзакцией: список `(dataset, history, outboxMessage)` для всех затронутых датасетов. Частичный каскад (часть downstream сброшена, часть осталась `Ready`) хуже отсутствия каскада вовсе.
+
+Каждый каскадный переход публикует `dataset.status.changes` как обычный переход — если Airflow слушает этот топик, каскад одновременно триггерит пересчёт downstream Spark-джобов, не только обновляет статус для guard'а.
 
 ### dataset_status_history
 Каждый переход статуса обязательно пишется в таблицу `dataset_status_history` с полями
@@ -317,6 +397,7 @@ Handlers возвращают `ErrorOr<T>` или `ErrorOr<Success>`.
 | Артефакт отсутствует в S3 | `Error.Validation("Dataset.ArtifactMissing", ...)` | 422 |
 | Валидация запроса | FluentValidation → `ValidationFilter` → `ValidationProblem` | 400 |
 | Неожиданная ошибка / БД недоступна | Exception → global handler → `ProblemDetails` | 500 |
+| Данные за период не готовы (readiness guard) | `DatasetErrors.DataNotReady(issues)` → `Error.Custom` | 503 |
 
 Domain-specific errors сгруппированы в `Application/Common/DatasetErrors.cs` 
 (static factory methods).
@@ -390,6 +471,7 @@ Kafka consumer (`PipelineEventConsumer`) — `BackgroundService`. Commit offset 
 - `throw InvalidOperationException` наружу из handlers — перехватывать в handler и возвращать `Error.Validation()` через `ErrorOr<T>`
 - Кастомный `Result<T>` тип — использовать `ErrorOr<T>` из библиотеки ErrorOr
 - `Result.Failure(...)` / `Result.Success(...)` — устаревший API кастомного `Result<T>`. Использовать неявное преобразование `ErrorOr<T>`: `return value;` для успеха, `return Error.X(...);` для ошибки
+- Response-классы reporting-хэндлеров не содержат `IsDataReady`/discriminated-union для readiness — readiness-503 всегда идёт через `Error.Custom`/`ErrorOr.Errors`-ветку, не как часть успешного значения
 
 ## Commands
 
