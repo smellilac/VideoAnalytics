@@ -26,6 +26,16 @@ public static class DependencyInjection
 
         services.AddScoped<IDatasetRepository, DatasetRepository>();
 
+        services.AddSingleton<IValidator<ClickHouseSettings>, ClickHouseSettingsValidator>();
+        services.AddSingleton<IValidateOptions<ClickHouseSettings>, FluentValidateOptions<ClickHouseSettings>>();
+
+        // ClickHouse
+        services.AddOptions<ClickHouseSettings>()
+            .BindConfiguration("ClickHouse")
+            .ValidateOnStart();
+        
+        services.AddScoped<IReportRepository, ClickHouseReportRepository>();
+
         // Kafka
         services.AddSingleton<IValidator<KafkaSettings>, KafkaSettingsValidator>();
         services.AddSingleton<IValidateOptions<KafkaSettings>, FluentValidateOptions<KafkaSettings>>();

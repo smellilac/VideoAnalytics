@@ -44,7 +44,9 @@ public sealed class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
             cfg.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Redis:ConnectionString"] = _redis.GetConnectionString(),
-                ["ConnectionStrings:Redis"] = _redis.GetConnectionString()
+                ["ConnectionStrings:Redis"] = _redis.GetConnectionString(),
+                // Satisfy ValidateOnStart; ClickHouseReportRepository is replaced below with a fake.
+                ["ClickHouse:ConnectionString"] = "Host=localhost;Port=8123;Database=default"
             }));
 
         builder.ConfigureServices(services =>
@@ -64,6 +66,13 @@ public sealed class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
             if (cacheDescriptor is not null)
                 services.Remove(cacheDescriptor);
             services.AddSingleton<ICacheService, NullCacheService>();
+
+            // Replace IReportRepository with a no-op fake — ClickHouse is not available in tests
+            var reportDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(IReportRepository));
+            if (reportDescriptor is not null)
+                services.Remove(reportDescriptor);
+            services.AddSingleton<IReportRepository, NullReportRepository>();
         });
     }
 }
